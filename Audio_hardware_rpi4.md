@@ -1,4 +1,4 @@
-# Tổng quan về Hardware raspberry pi 4
+# Audio Hardware raspberry pi 4
 
 ![alt text](raspbery-pi4.png)
 
@@ -251,3 +251,41 @@ tiendq@tiendq-B760MX2-E-D4:~/aosp/rpi_kernel/common/drivers/staging/vc04_service
 └── vc_vchi_audioserv_defs.h
 ```
 ## To be continue ...
+
+## Flow khởi tạo bcm2835 audio driver
+
+```mermaid
+graph TD
+  A[Module Load] --> B[probe snd_bcm2835_alsa_probe]
+  B --> C[Check num_channels valid]
+  
+  C --> D{Enable HDMI?}
+  D -->|Yes| E[Set HDMI enables]
+  D -->|No| H{Enable headphones?}
+  
+  E --> F[Query firmware num_displays and display_id]
+  F --> G[Update enable_hdmi0 and enable_hdmi1]
+  
+  H --> I[Read property brcm disable headphones]
+  
+  B --> J[bcm2835_devm_add_vchi_ctx]
+  J --> K[bcm2835_new_vchi_ctx]
+  K --> L[Create bcm2835_vchi_ctx and init VCHIQ]
+  
+  B --> M[snd_add_child_devices dev num_channels]
+  M --> N[Loop through each enabled child]
+  N --> O[snd_add_child_device]
+  O --> P[snd_card_new]
+  P --> Q[Configure chip, set name, init mutex]
+  
+  Q --> R[audio_driver new PCM]
+  R --> S[snd_bcm2835_new_pcm]
+  
+  Q --> T[audio_driver new control]
+  T --> U[snd_bcm2835_new_hdmi_ctl or headphones_ctl]
+  
+  Q --> V[snd_card_register]
+  V --> W[devm_add_action free on unload]
+  W --> X[Return 0 - done]
+```
+
