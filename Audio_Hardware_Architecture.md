@@ -134,33 +134,36 @@ Sau khi micro tạo ra tín hiệu điện áp analog, tín hiệu này thườn
 
 ### A. ⚙️ Cách thức hoạt động – 2 bước chính
 
-#### A.1. 🕒 Sampling – Lấy mẫu theo thời gian
+#### A.1. 🕒 Sample Rate – Lấy mẫu theo thời gian
 
-- Tín hiệu analog được **lấy mẫu (sample)** tại các thời điểm cách đều nhau theo **tần số Fs (sample rate)**.
-- Mỗi điểm lấy mẫu lưu lại **biên độ tín hiệu tại thời điểm đó**.
+![alt text](sample_rate.png)
+
+Sample Rate: (Sampling Rate, Sampling Frequency): Là số lần lấy mẫu trên một giây, có đơn vị Hz. Một bản nhạc có sample rate là 44100 Hz thì mỗi giây nhạc sẽ được lấy mẫu 44100 lần.
+
+✅ Theo **định lý Nyquist**:  
+- Tất cả thông tin của tín hiệu gốc có thể được phục hồi nếu nó được lấy mẫu với tần số (Fs) lớn gấp ít nhất 2 lần tần số cao nhất của tín hiệu gốc
+- Tai người có khả năng nghe trong khoảng 20Hz – 20kHz, vì vậy sample rate tối thiểu cần thiết là 40kHz. Do đó, chuẩn 44.1kHz của CD là đủ để tái tạo toàn bộ dải âm thanh mà con người có thể nghe.
 
 **Giá trị mẫu phổ biến của Fs:**
-- 8 kHz → thoại (telephone)
+- 8 kHz → điện thoại (telephone)
 - 44.1 kHz → nhạc số CD
 - 48 kHz, 96 kHz, 192 kHz → hệ thống chuyên nghiệp, studio
-
-✅ Theo **định lý Nyquist**:  Fs ≥ 2 × Fmax
-
-→ Để thu âm tần số tối đa 20 kHz → cần lấy mẫu ít nhất 40 kHz.
 
 ---
 
 #### A.2. 📐 Quantization – Lượng tử hóa biên độ
 
-- Sau khi lấy mẫu, mỗi điểm được **chuyển thành giá trị số** nhờ **bit depth (n bits/sample)**.
+![alt text](BitDepth.png)
 
-**Bit depth phổ biến:**
+- Để lưu lại dưới dạng số, mỗi mẫu được biểu diễn bằng một lượng bit dữ liệu nhất định, gọi là **BitDepth**. Các bản nhạc hiện nay thường có BitDepth là 16 bits, 24 bits…BitDepth càng lớn âm thanh càng sắc nét, trung thực nên nó còn được gọi là **Resolution** (độ nét).
+
+**BitDepth phổ biến:**
 - 16-bit → dùng trong CD Audio
 - 24-bit → chuyên nghiệp / studio
 - 32-bit → floating-point, dynamic range cực cao
 
 **Tác động:**
-- Bit depth càng cao → tín hiệu càng chi tiết → **ít nhiễu lượng tử**, **dải động (dynamic range)** rộng hơn
+- **BitDepth** càng cao → tín hiệu càng chi tiết → **ít nhiễu lượng tử**, **dải động (dynamic range)** rộng hơn
 
 ---
 
@@ -193,6 +196,22 @@ Sau khi micro tạo ra tín hiệu điện áp analog, tín hiệu này thườn
   - TDM (Time-Division Multiplexing)
 
 ---
+
+#### B.3. Công thức tính kích thước frame
+**Công thức:**
+
+\[
+\text{Size (bytes)} = \text{Thời gian (s)} \times \text{Sample Rate (Hz)} \times \text{Bit Depth (bytes)} \times \text{Số kênh}
+\]
+
+**Trong đó:**
+- **Sample Rate **= số mẫu/giây
+- **Bit Depth **(bytes) = số byte mỗi mẫu (VD: 16 bits = 2 bytes)
+- Số kênh = 1 (mono), 2 (stereo), ...
+
+Ví dụ: một phút của bản ghi âm có : Sample rate = 44100 Hz, BitDepth = 16 bits = 2 bytes, Channel = 1 kênh sẽ có dung lượng: 44100 đợt lấy mẫu x 2 bytes x 60 giây x 1 kênh = 5.297.000 bytes, tức khoảng 5.3 MB
+
+- **BitRate**: Là thông số thu gọn, đại diện cơ bản cho các thuộc tính trên. Bitrate có đơn vị Kbps (Kilobits per second) – dung lượng (tính theo bit) của âm thanh số trên một giây. Với Bitrate, ta có thể xác định nhanh chóng dung lượng cũng như phần nào chất lượng của bản nhạc.
 
 ## 3. 🎛️ DSP – Bộ xử lý tín hiệu số
 
