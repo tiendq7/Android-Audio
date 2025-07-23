@@ -288,3 +288,10 @@ graph TD
   W --> X[Return 0 - done]
 ```
 ## To be continue ...
+
+Driver bcm2835-audio là một giải pháp âm thanh cho Raspberry Pi do Broadcom cung cấp, hoạt động thông qua giao tiếp giữa ARM ↔ GPU firmware bằng VCHIQ. Nó không phù hợp để điều khiển một codec rời qua I2C/I2S
+
+Đã tìm thấy alsa kernel trong common/sound
+Cụ thể : **common/sound/soc** ALSA SoC (ASoC): sẽ là nơi viết codec driver, machine driver, platform driver
+
+-.- như loèn
