@@ -1,4 +1,4 @@
-# 🎧 Tổng quan hệ thống audio trong Android
+# 🎧 Tổng quan hệ thống Audio trong Android
 
 Hệ thống audio của Android được thiết kế theo kiến trúc phân tầng, giúp tách biệt rõ ràng giữa ứng dụng, xử lý logic, phần mềm trung gian và phần cứng. Từ ứng dụng (app) cho đến driver kernel, mỗi lớp đảm nhận một vai trò riêng và giao tiếp với nhau qua các giao diện chuẩn như HAL và Binder IPC.
 

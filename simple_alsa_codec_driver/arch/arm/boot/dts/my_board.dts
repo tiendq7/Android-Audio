@@ -1,0 +1,26 @@
+&i2c1 {
+    mycodec: mycodec@1a {
+        compatible = "mycompany,mycodec";
+        reg = <0x1a>;
+        #sound-dai-cells = <0>;
+    };
+};
+
+&sound {
+    compatible = "my_machine";
+    model = "My Custom ALSA Board";
+
+    cpu {
+        sound-dai = <&i2s0>;
+    };
+
+    codec {
+        sound-dai = <&mycodec>;
+    };
+
+    dais {
+        dai-format = "i2s";
+        bitclock-master = <&codec>;
+        frame-master = <&codec>;
+    };
+};

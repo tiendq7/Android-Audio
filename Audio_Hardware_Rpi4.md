@@ -1,4 +1,4 @@
-# Audio Hardware raspberry pi 4
+# Audio Hardware Raspberry pi 4
 
 ![alt text](raspbery-pi4.png)
 
@@ -234,7 +234,7 @@ __overrides__ {
 };
 ```
 
-## Kernel Driver Audio
+## ALSA kernel in RPI4
 
 Chúng ta sẽ tìm thấy kernel driver của Audio Raspery pi4 trong `common/drivers/staging/vc04_services/bcm2835-audio`
 
@@ -250,7 +250,6 @@ tiendq@tiendq-B760MX2-E-D4:~/aosp/rpi_kernel/common/drivers/staging/vc04_service
 ├── Makefile
 └── vc_vchi_audioserv_defs.h
 ```
-## To be continue ...
 
 ## Flow khởi tạo bcm2835 audio driver
 
@@ -288,4 +287,4 @@ graph TD
   V --> W[devm_add_action free on unload]
   W --> X[Return 0 - done]
 ```
-
+## To be continue ...
