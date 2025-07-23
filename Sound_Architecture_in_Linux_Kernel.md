@@ -231,3 +231,32 @@ Simple source nằm trong [simple alsa codec driver](./simple_alsa_codec_driver)
 | `fread() + snd_pcm_writei()` | Đọc dữ liệu từ file WAV và gửi đến codec. |
 | `snd_pcm_close()` | Đóng thiết bị sau khi phát xong. |
 
+- Thực hiện build file.ko tương ứng và insmod các file vào hệ thống.
+
+```
+sudo insmod ./sound/soc/codecs/mycodec.ko
+sudo insmod ./sound/soc/boards/my_machine.ko
+```
+
+- Kiểm tra ALSA nhận card chưa
+
+```
+aplay -l    # Liệt kê các thiết bị playback
+arecord -l  # Liệt kê các thiết bị record
+```
+- Kiểm tra kernel logs
+```
+dmesg | grep snd
+dmesg | grep mycodec
+```
+- Kiểm tra thông tin card
+```
+cat /proc/asound/cards
+```
+- Phát thử bằng aplay
+```
+aplay -D hw:0,0 test.wav
+```
+---
+## 📌 Kết luận
+Hệ thống ALSA trong không gian kernel cung cấp một kiến trúc âm thanh mạnh mẽ và mô-đun cho Linux, đặc biệt phù hợp với các thiết bị nhúng (embedded) và SoC. Với mô hình ASoC (ALSA System-on-Chip), driver âm thanh được tách thành ba phần rõ ràng: **codec driver** để điều khiển chip ADC/DAC, **CPU Dai** để xử lý DMA và tương tác phần cứng, và **machine driver** để kết nối hai thành phần trên theo đặc tả phần cứng cụ thể. Cấu hình phần cứng được hoàn thiện thông qua Device Tree, giúp tách biệt logic phần cứng ra khỏi mã nguồn driver. Nhờ đó, ALSA trong kernel space không chỉ đảm bảo hiệu năng và tính ổn định cao mà còn dễ dàng mở rộng và tùy biến cho nhiều loại thiết bị âm thanh khác nhau.
