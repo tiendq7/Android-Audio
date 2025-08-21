@@ -160,12 +160,11 @@ Kiểm tra thông số buffer hiện tại:
 ```
 cat /proc/asound/card0/pcm0p/sub0/hw_params
 ```
----
 
 ---
 ## ⚙️ Custom ALSA codec driver from scratch 
 
-### Cấu trúc cây thư mục
+### 1.Demo codec driver.
 
 ```
 
@@ -187,76 +186,106 @@ project-root/
 Simple source nằm trong [simple alsa codec driver](./simple_alsa_codec_driver)
 
 ---
-### Chức năng từng file
+#### Luồng hoạt động tổng thể
 
-#### 📄 `mycodec.c` – Codec Driver
+Quy trình khởi tạo và hoạt động của hệ thống ASoC với codec giả định `mycodec` diễn ra theo các bước sau:
 
-| Thành phần | Mô tả |
-|------------|------|
-| `my_codec_controls` | Định nghĩa mixer control, ví dụ volume. |
-| `my_codec_widgets` | Khai báo các DAPM widgets như `IN`, `OUT`. |
-| `my_codec_routes` | Xác định đường đi tín hiệu âm thanh giữa widgets. |
-| `my_codec_dai` | Mô tả giao tiếp DAI của codec: format, rate, channel. |
-| `my_codec_driver` | Gắn các controls, widgets, routes vào codec component. |
-| `my_codec_probe` | Hàm khởi tạo codec driver, in log hoặc khởi tạo codec. |
-| `my_codec_i2c_probe` | Đăng ký codec driver với ALSA qua I2C. |
-| `module_i2c_driver()` | Đăng ký module codec với kernel thông qua hệ thống driver. |
+1. **Kernel khởi động**  
+   Trong quá trình boot, kernel đọc Device Tree và phát hiện node `mycodec@1a` trên bus I²C.  
+   → I²C core kích hoạt hàm `mycodec_i2c_probe()`, từ đó codec driver được đăng ký vào ASoC core.
 
-#### 📄 `my_machine.c` – Machine Driver
+2. **Khởi tạo machine driver từ Device Tree `sound`**  
+   Kernel tiếp tục dò node `sound` trong Device Tree và match với `my-machine` driver.  
+   → Hàm `my_machine_probe()` được gọi, tạo ra một `snd_soc_card` cùng các `snd_soc_dai_link` mô tả mối liên hệ giữa CPU DAI và codec DAI.
 
-| Thành phần | Mô tả |
-|------------|------|
-| `my_dai_link` | Liên kết giữa CPU DAI ↔ Codec DAI (I2S). |
-| `my_snd_card` | Đại diện cho sound card ALSA, chứa `dai_link`. |
-| `my_machine_probe` | Đăng ký sound card với kernel thông qua `snd_soc_register_card()`. |
-| `module_platform_driver()` | Đăng ký machine driver theo chuẩn platform. |
+3. **ASoC core ghép nối DAI**  
+   ASoC core sử dụng thông tin từ `snd_soc_dai_link` để kết nối:  
+   - **CPU DAI**: driver `bcm2835-i2s` (phần tử I²S trong SoC).  
+   - **Codec DAI**: driver `mycodec-dai` (được đăng ký từ codec driver).  
+   → Tạo ra thực thể `pcm_runtime` cho card âm thanh.
 
-#### 📄 `my_board.dts` – Device Tree
-
-| Thành phần | Mô tả |
-|------------|------|
-| `mycodec@1a` | Codec được kết nối qua I2C1 với địa chỉ `0x1a`. |
-| `compatible = "mycompany,mycodec"` | Tên định danh trỏ tới codec driver. |
-| `&sound` | Node định nghĩa sound card. |
-| `cpu { sound-dai = <&i2s0>; }` | Chỉ định DAI interface của CPU (I2S0, McASP0…). |
-| `codec { sound-dai = <&mycodec>; }` | Liên kết đến codec DAI đã khai báo. |
-| `dais { dai-format = "i2s"; ... }` | Cấu hình định dạng giao tiếp âm thanh (I2S), master/slave. |
-
-#### 📄 `alsa_play.cpp` – Ứng dụng ALSA để Test Phát Âm Thanh
-
-| Thành phần | Mô tả |
-|------------|------|
-| `snd_pcm_open()` | Mở thiết bị phát âm thanh `hw:0,0` (card 0, device 0). |
-| `snd_pcm_set_params()` | Cấu hình: format (S16_LE), 2 kênh stereo, 44.1kHz, buffer time. |
-| `fread() + snd_pcm_writei()` | Đọc dữ liệu từ file WAV và gửi đến codec. |
-| `snd_pcm_close()` | Đóng thiết bị sau khi phát xong. |
+4. **ALSA tạo thiết bị trong user space**  
+   Khi card đã được cấu hình xong, ALSA sẽ đăng ký thiết bị âm thanh mới.  
+   → Người dùng có thể thấy card bằng lệnh `aplay -l` hoặc `arecord -l`.  
+   → Từ đó, các ứng dụng user space có thể gọi `aplay` (phát nhạc) hoặc `arecord` (ghi âm) thông qua thiết bị `/dev/snd/pcmCxDy[p|c]`.
 
 - Thực hiện build file.ko tương ứng và insmod các file vào hệ thống.
 
-```
-sudo insmod ./sound/soc/codecs/mycodec.ko
-sudo insmod ./sound/soc/boards/my_machine.ko
-```
-
-- Kiểm tra ALSA nhận card chưa
-
-```
-aplay -l    # Liệt kê các thiết bị playback
-arecord -l  # Liệt kê các thiết bị record
-```
-- Kiểm tra kernel logs
-```
-dmesg | grep snd
-dmesg | grep mycodec
-```
-- Kiểm tra thông tin card
-```
-cat /proc/asound/cards
-```
-- Phát thử bằng aplay
-```
-aplay -D hw:0,0 test.wav
-```
 ---
+### 2. WM8960 codec driver 
+Tiếp theo chúng ta sẽ đi đến 1 ví dụ về việc triển khai 1 Codec Driver cụ thể. Ở đây là việc triển khai WM8960 với Raspbery Pi 4. Như đã mô tả ở phía trên về  phần **ASoC Drivers** , trên nền tảng **Raspberry Pi 4 với codec WM8960**, các driver được ánh xạ cụ thể như sau:
+- **CPU DAI Driver**: `bcm2835-i2s`
+- **Codec Driver**: `wm8960` (`snd-soc-wm8960`)  
+- **Machine Driver**: `simple-audio-card`
+Source code: https://github.com/waveshareteam/WM8960-Audio-HAT
+
+#### Luồng hoạt động tổng thể
+
+```mermaid
+graph TD
+  subgraph DeviceTree
+    DT_cpu_i2s["cpu_i2s (DT node)"]
+    DT_codec["codec (DT node)"]
+    DT_simple_audio_card["simple-audio-card (DT node)"]
+    DT_fixed_clock["fixed_clock (DT node)"]
+  end
+
+  subgraph Drivers
+    cpu_dai_driver["CPU DAI Driver (bcm2835-i2s)"]
+    machine_driver_simple_card["Machine Driver (simple-card)"]
+    codec_driver["Codec Driver (wm8960)"]
+    platform_driver["Platform Driver (bcm2835-pcm)"]
+  end
+
+  subgraph ASOC_Core["ASoC Core"]
+    snd_soc_card["snd_soc_card"]
+    snd_soc_dai_link["snd_soc_dai_link"]
+    dai_link_cpu["dai_link.cpus[0]"]
+    dai_link_codec["dai_link.codecs[0]"]
+    dai_link_platform["dai_link.platforms[0]"]
+  end
+
+  subgraph Runtime["ASoC Runtime"]
+    pcm_runtime["pcm_runtime"]
+    dai_cpu["dai_cpu (struct snd_soc_dai)"]
+    dai_codec["dai_codec (struct snd_soc_dai)"]
+  end
+
+  %% Bindings từ Device Tree sang driver
+  DT_cpu_i2s --> cpu_dai_driver
+  DT_codec --> codec_driver
+  DT_simple_audio_card --> machine_driver_simple_card
+  DT_fixed_clock --> codec_driver
+
+  %% Machine driver parse DT và lập card
+  machine_driver_simple_card --> snd_soc_card
+  machine_driver_simple_card --> snd_soc_dai_link
+  snd_soc_dai_link --> dai_link_cpu
+  snd_soc_dai_link --> dai_link_codec
+  snd_soc_dai_link --> dai_link_platform
+
+  %% Codec và CPU đăng ký DAI
+  codec_driver --> dai_codec
+  cpu_dai_driver --> dai_cpu
+  platform_driver --> dai_link_platform
+
+  %% Card nối CPU DAI và Codec DAI
+  dai_link_cpu --> dai_cpu
+  dai_link_codec --> dai_codec
+  snd_soc_card --> pcm_runtime
+
+```
+Trong hệ thống ASoC, các thành phần CPU DAI, Codec, Machine driver và Platform được kết nối thông qua mô hình chuẩn của ALSA. Trên Raspberry Pi 4, phần tử **I2S** được kích hoạt từ Device Tree node `&i2s`. Khi node này được bật, driver **bcm2835-i2s** được nạp, thực hiện hàm `bcm2835_i2s_probe()` và đăng ký DAI thông qua `snd_soc_register_component()`. Từ đó, ASoC core khởi tạo một thực thể `struct snd_soc_dai` cho CPU DAI, được gọi là `dai_cpu`.
+
+Ở phía codec, Device Tree có node `wm8960@1a` với `compatible = "wlf,wm8960"`. Khi kernel quét node này, driver **wm8960** được match và hàm `wm8960_i2c_probe()` được gọi. Trong quá trình probe, driver gọi `devm_snd_soc_register_component()` để đăng ký component và DAI của codec. Đồng thời, driver sử dụng `devm_clk_get("mclk")` để lấy clock từ node fixed-clock được định nghĩa trong Device Tree. Kết quả là một `struct snd_soc_component` và một DAI codec (`dai_codec`) được tạo ra và quản lý bởi ASoC core.
+
+Để kết nối CPU DAI và Codec DAI, hệ thống sử dụng machine driver **simple-audio-card**. Node `sound` trong Device Tree có `compatible = "simple-audio-card"` chứa thông tin định dạng (format), master/slave, và liên kết đến node CPU và Codec. Khi probe, driver simple-audio-card thực hiện hàm `asoc_simple_card_probe()`, parse thông tin từ Device Tree và điền vào `struct snd_soc_dai_link`. Trong đó, trường `cpus[0].of_node` trỏ về node `&i2s`, `codecs[0].of_node` trỏ về node `&codec`, và `platforms[0].of_node` cũng tham chiếu CPU node để sử dụng PCM platform driver. Tất cả các `dai_link` này được gắn vào `struct snd_soc_card`, tạo nên một sound card logic trong kernel.
+
+Khi các DAI được đăng ký đầy đủ, ASoC core thực hiện quá trình binding: `dai_link.cpus[0]` được liên kết với `dai_cpu` từ bcm2835-i2s, `dai_link.codecs[0]` được liên kết với `dai_codec` từ wm8960, và `dai_link.platforms[0]` được kết nối với platform driver `bcm2835-pcm`. Sau khi binding hoàn tất, ASoC core khởi tạo một `struct snd_soc_pcm_runtime`, gom tất cả CPU DAI, Codec DAI và platform driver thành một pipeline hoàn chỉnh. 
+
+Kết quả cuối cùng, user space sẽ thấy thiết bị âm thanh mới trong `/dev/snd/`, ví dụ `pcmC1D0p` và `pcmC1D0c`. Khi chạy `aplay -l`, người dùng có thể thấy card WM8960 được đăng ký với driver bcm2835-i2s và platform bcm2835-pcm. Như vậy, toàn bộ chuỗi từ Device Tree → Driver → ASoC core → PCM runtime được khép kín, cho phép truyền và xử lý luồng âm thanh giữa CPU và codec qua bus I²S.
+
+![alt text](result_wm8960.jpg)
+
 ## 📌 Kết luận
 Hệ thống ALSA trong không gian kernel cung cấp một kiến trúc âm thanh mạnh mẽ và mô-đun cho Linux, đặc biệt phù hợp với các thiết bị nhúng (embedded) và SoC. Với mô hình ASoC (ALSA System-on-Chip), driver âm thanh được tách thành ba phần rõ ràng: **codec driver** để điều khiển chip ADC/DAC, **CPU Dai** để xử lý DMA và tương tác phần cứng, và **machine driver** để kết nối hai thành phần trên theo đặc tả phần cứng cụ thể. Cấu hình phần cứng được hoàn thiện thông qua Device Tree, giúp tách biệt logic phần cứng ra khỏi mã nguồn driver. Nhờ đó, ALSA trong kernel space không chỉ đảm bảo hiệu năng và tính ổn định cao mà còn dễ dàng mở rộng và tùy biến cho nhiều loại thiết bị âm thanh khác nhau.

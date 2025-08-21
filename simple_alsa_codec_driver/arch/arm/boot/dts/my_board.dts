@@ -1,26 +1,27 @@
 &i2c1 {
     mycodec: mycodec@1a {
-        compatible = "mycompany,mycodec";
+        compatible = "myvendor,mycodec";
         reg = <0x1a>;
         #sound-dai-cells = <0>;
     };
 };
 
+/* Node "sound" để tạo platform device cho machine driver */
 &sound {
-    compatible = "my_machine";
+    compatible = "myvendor,my-machine";
     model = "My Custom ALSA Board";
 
     cpu {
-        sound-dai = <&i2s0>;
+        sound-dai = <&i2s0>;        /* CPU DAI phandle */
     };
 
     codec {
-        sound-dai = <&mycodec>;
+        sound-dai = <&mycodec>;     /* CODEC DAI phandle */
     };
 
     dais {
         dai-format = "i2s";
-        bitclock-master = <&codec>;
-        frame-master = <&codec>;
+        bitclock-master = <&codec>; /* codec master bitclock */
+        frame-master    = <&codec>; /* codec master lrclk   */
     };
 };
